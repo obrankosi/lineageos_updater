@@ -1,3 +1,5 @@
+from changelog.gerrit import GerritServer, GerritJSONEncoder
+from changelog import get_changes, get_timestamp
 from database import Rom, ApiKey, Device
 
 from flask import Flask, jsonify, request, abort, render_template
@@ -15,11 +17,15 @@ import requests
 import sys
 import time
 
+os.environ['TZ'] = 'UTC'
+
 app = Flask(__name__)
 app.config.from_pyfile('app.cfg')
+app.json_encoder = GerritJSONEncoder
 
 db = MongoEngine(app)
 cache = Cache(app)
+gerrit = GerritServer(app.config['GERRIT_URL'])
 
 def api_key_required(f):
     @wraps(f)
@@ -97,6 +103,7 @@ def index(device, romtype, incrementalversion):
     if version:
         roms = roms(version=version)
 
+    roms = roms.order_by('datetime')
     data = []
 
     for rom in roms:
@@ -108,7 +115,7 @@ def index(device, romtype, incrementalversion):
             "version": rom.version,
             "filename": rom.filename
         })
-    return jsonify({'response': data })
+    return jsonify({'response': data})
 
 @app.route('/api/v1/types/<string:device>/')
 def get_types(device):
@@ -159,6 +166,24 @@ def add_build():
     rom.save()
     return "ok", 200
 
+@app.route('/api/v1/changes/<device>/')
+@app.route('/api/v1/changes/<device>/<int:before>/')
+@app.route('/api/v1/changes/<device>/-1/')
+@cache.cached(timeout=3600)
+def changes(device='all', before=-1):
+    if device == 'all':
+        device = None
+    return jsonify(get_changes(gerrit, device, before))
+
+@app.route('/<device>/changes/<int:before>/')
+@app.route('/<device>/changes/')
+@app.route('/')
+@cache.cached(timeout=3600)
+def show_changelog(device='all', before=-1):
+    devices = sorted([x for x in Device.get_devices() if x['model'] in Rom.get_devices()], key=lambda device: device['name'])
+    oems = sorted(list(set([x['oem'] for x in devices])))
+    return render_template('changes.html', active_device=None, oems=oems, devices=devices, device=device, before=before, changelog=True)
+
 @app.route('/api/v1/devices')
 @cache.cached(timeout=3600)
 def api_v1_devices():
@@ -176,13 +201,6 @@ def purge_cache():
     cache.clear()
     return 'ok', 200
 
-@app.route('/')
-@cache.cached(timeout=3600)
-def web_main():
-    devices = sorted([x for x in Device.get_devices() if x['model'] in Rom.get_devices()], key=lambda device: device['name'])
-    oems = sorted(list(set([x['oem'] for x in devices])))
-    return render_template("main.html", oems=oems, devices=devices)
-
 @app.route("/<string:device>")
 @cache.cached(timeout=3600)
 def web_device(device):
@@ -194,7 +212,9 @@ def web_device(device):
     active_oem = [x['oem'] for x in devices if x['model'] == device]
     active_oem = active_oem[0] if active_oem else None
 
-    return render_template("device.html", active_oem=active_oem, active_device=device, oems=oems, devices=devices, roms=roms)
+    active_device = Device.objects(model=device).first()
+
+    return render_template("device.html", active_oem=active_oem, active_device=active_device, oems=oems, devices=devices, roms=roms, get_timestamp=get_timestamp)
 
 @app.route("/extras")
 @cache.cached(timeout=3600)
@@ -202,4 +222,4 @@ def web_extras():
     devices = sorted([x for x in Device.get_devices() if x['model'] in Rom.get_devices()], key=lambda device: device['name'])
     oems = sorted(list(set([x['oem'] for x in devices])))
 
-    return render_template("extras.html", oems=oems, devices=devices, extras=True)
+    return render_template("extras.html", active_device=None, oems=oems, devices=devices, extras=True)

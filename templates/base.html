@@ -4,7 +4,7 @@
         <title>LineageOS Downloads</title>
         <link href="//fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
         <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/materialize/0.97.8/css/materialize.min.css">
-        <link rel="stylesheet" href="static/site.css">
+        <link rel="stylesheet" href="/static/site.css">
         <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
         <link rel="icon" sizes="16x16 32x32" href="static/favicons/favicon.ico">
         <!--[if IE]><link rel="shortcut icon" href="static/favicons/favicon.ico"><![endif]-->
@@ -21,7 +21,7 @@
                     <li>
                         <div class="userView">
                             <div class="background">
-                                <img src="https://github.com/LineageOS/android_packages_apps_CMWallpapers/blob/cm-14.1/res/drawable-hdpi/iconoclast.png?raw=true">
+                                <img src="/static/iconoclast.png">
 </div>
                             <a href="#!user"><img class="logo circle" src="/static/logo.png" height=128px width=128px /></a>
                             <a href="#!name"><span class="white-text name">Devices</span></a>
@@ -40,8 +40,12 @@
                                     <ul>
                                         {% for device in devices %}
                                         {% if device.oem == oem %}
-                                        {% if device.model == active_device %}
+                                        {% if active_device %}
+                                        {% if device.model == active_device.model %}
                                         <li class="active grey darken-2"><a href="/{{device.model}}">{{device.name}} ({{device.model}})</a></li>
+                                        {% else %}
+                                        <li ><a href="/{{device.model}}">{{device.name}} ({{device.model}})</a></li>
+                                        {% endif %}
                                         {% else %}
                                         <li ><a href="/{{device.model}}">{{device.name}} ({{device.model}})</a></li>
                                         {% endif %}
@@ -76,7 +80,9 @@
           <div class="container">
             <div class="row">
               <div class="col l12 s12">
+                  {% if not changelog %}
                   <p class="grey-text text-lighten-4">Note: md5sums are provided to verify the file download was successful. If you'd like to verify the file has not been tampered with, check its signature instead. More information on how to do this can be found <a class="grey-text text-lighten-2" href="http://wiki.lineageos.org/verifying-builds.html">here</a>.</p>
+                  {% endif %}
               </div>
             </div>
           </div>
@@ -89,6 +95,8 @@
         </footer>
         <script type="text/javascript" src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
         <script src="//cdnjs.cloudflare.com/ajax/libs/materialize/0.97.8/js/materialize.min.js"></script>
+        {% block script %}
+        {% endblock %}
         <script type="text/javascript">
             $(".button-collapse").sideNav();
         </script>
