@@ -96,5 +96,47 @@ function onScroll() {
     }
 }
 
+function filterDevices(search) {
+    $("#slide-out").children().each(function(vKey, vElem) {
+        if (vKey != 0) {
+            vendor = $(vElem).find("a.collapsible-header").html().toLowerCase();
+            if (vendor.indexOf(search) == -1) {
+                any = false;
+                $(vElem).find("div.collapsible-body").find("ul").children().each(function(dKey, dElem) {
+                    device = $(dElem).find("a").html().toLowerCase();
+                    if (device.indexOf(search) == -1) {
+                        $(dElem).hide();
+                    } else {
+                        $(dElem).show();
+                        any = true;
+                    }
+                });
+                if (!any) {
+                    $(vElem).hide();
+                } else {
+                    $(vElem).show();
+                }
+            } else if (search == "") {
+                $(vElem).show();
+                $(vElem).find("div.collapsible-body").find("ul").children().each(function(dKey, dElem) {
+                    $(dElem).show();
+                });
+            } else {
+                $(vElem).show();
+                $(vElem).find("div.collapsible-body").find("ul").children().each(function(dKey, dElem) {
+                    if (device.indexOf(search) == -1) {
+                        $(dElem).hide();
+                    } else {
+                        $(dElem).show();
+                    }
+                });
+            }
+        }
+    });
+}
+
 $(window).scroll(onScroll);
 
+$("#search").on('input', function(e) {
+    filterDevices($("#search").val().toLowerCase());
+});
